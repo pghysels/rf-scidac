@@ -32,12 +32,12 @@ int main(int argc, char* argv[]) {
     std::stringstream ss;
     ss << mat << std::setfill('0') << std::setw(6) << i;
     std::string fname = ss.str();
-    std::cout << "Rank " << rank << " opening " << fname << std::endl;
+    std::cout << "rank " << rank << " opening " << fname << std::endl;
     const int max_cline = 256;
     char cline[max_cline];
     FILE *fp = fopen(fname.c_str(), "r");
     if (!fp) {
-      std::cout << "Unable to open file" << std::endl;
+      std::cout << "unable to open file" << std::endl;
       return 1;
     }
     std::int64_t row, col;
@@ -50,12 +50,11 @@ int main(int argc, char* argv[]) {
   }
   std::int64_t nnz = comm.all_reduce(triplets.size(), MPI_SUM);
   m = comm.all_reduce(m, MPI_MAX);
-  if (!rank) {
-    std::cout << "Matrix has " << m << " rows and "
-              << nnz << " nonzeros" << std::endl;
-    std::cout << "Reading matrix took "
+  if (!rank)
+    std::cout << "matrix has " << m << " rows and "
+              << nnz << " nonzeros" << std::endl
+	      << "reading matrix took "
 	      << MPI_Wtime() - t_start << " seconds" << std::endl;
-  }
   t_start = MPI_Wtime();
 
   // assign ~m/P rows to each proc
@@ -63,12 +62,15 @@ int main(int argc, char* argv[]) {
   for (int p=1; p<P; p++)
     dist[p] = std::floor(p * double(m) / P);
   dist[P] = m;
+  for (int p=0; p<P; p++) { assert(dist[p] <= dist[p+1]); }
+  assert(dist[0] == 0);
+  assert(dist[P] == m);
   std::int64_t lrows = dist[rank+1] - dist[rank];
 
   if (!rank) {
     std::cout << "local rows {";
-    for (std::size_t p=0; p<P; p++)
-      std::cout << lrows << ", ";
+    for (int p=0; p<P; p++)
+      std::cout << dist[p+1]-dist[p] << ", ";
     std::cout << "}" << std::endl;
   }
 
@@ -82,7 +84,8 @@ int main(int argc, char* argv[]) {
     sbuf[dst].push_back(t);
   }
   triplets.clear();
-  if (!rank) std::cout << "redistributing triplets" << std::endl;
+  if (!rank)
+    std::cout << "redistributing triplets" << std::endl;
   auto ltrips = comm.all_to_all_v(sbuf);
   sbuf.clear();
   std::sort(ltrips.begin(), ltrips.end(),
@@ -90,20 +93,28 @@ int main(int argc, char* argv[]) {
               return (a.r < b.r) || (a.r == b.r && a.c < b.c); });
 
   std::int64_t lnnz = ltrips.size();
-  if (!rank) {
-    std::cout << "local nnz {";
-    for (std::size_t p=0; p<P; p++)
-      std::cout << lnnz << ", ";
-    std::cout << "}" << std::endl;
-    std::cout << "Redistributing matrix took "
-	      << MPI_Wtime() - t_start << " seconds" << std::endl;
+  if (!rank)
+    std::cout << "local nnz {" << std::flush;
+  for (int p=0; p<P; p++) {
+    comm.barrier();
+    if (rank == p)
+      std::cout << lnnz << ", " << std::flush;
   }
+  comm.barrier();
+  if (!rank)
+    std::cout << "}" << std::endl
+	      << "redistributing matrix took "
+	      << MPI_Wtime() - t_start << " seconds" << std::endl;
+
   t_start = MPI_Wtime();
   std::vector<std::int64_t> rptr(lrows+1), cind(lnnz);
   std::vector<scalar_t> val(lnnz);
-  if (!rank) std::cout << "building local CSR" << std::endl;
+  if (!rank)
+    std::cout << "building local CSR" << std::endl;
   for (std::size_t i=0; i<ltrips.size(); i++) {
     auto& t = ltrips[i];
+    assert(t.r >= dist[rank]);
+    assert(t.r < dist[rank+1]);
     rptr[t.r-dist[rank]+1]++;
     cind[i] = t.c;
     val[i] = t.v;
@@ -112,18 +123,17 @@ int main(int argc, char* argv[]) {
     rptr[i+1] += rptr[i];
   assert(rptr[lrows] == lnnz);
   assert(rptr[0] == 0);
-  if (!rank) std::cout << "creating CSRMatrixMPI" << std::endl;
+  if (!rank)
+    std::cout << "creating CSRMatrixMPI" << std::endl;
   strumpack::CSRMatrixMPI<scalar_t,std::int64_t>
     A(lrows, rptr.data(), cind.data(), val.data(), dist.data(), comm, false);
   val.clear();
   rptr.clear();
   cind.clear();
-  if (!rank) {
-    std::cout << "Creating CSRMatrixMPI took "
-	      << MPI_Wtime() - t_start << " seconds" << std::endl;
-  }
-
-  if (!rank) std::cout << "creating STRUMPACK solver" << std::endl;
+  if (!rank)
+    std::cout << "creating CSRMatrixMPI took "
+	      << MPI_Wtime() - t_start << " seconds" << std::endl
+	      << "creating STRUMPACK solver" << std::endl;
   strumpack::StrumpackSparseSolverMPIDist<scalar_t,std::int64_t>sp(MPI_COMM_WORLD);
   sp.options().set_from_command_line(argc, argv);
   sp.options().set_matching(strumpack::MatchingJob::NONE);
