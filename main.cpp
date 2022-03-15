@@ -10,19 +10,21 @@
 #include "sparse/CSRMatrixMPI.hpp"
 #include "misc/RandomWrapper.hpp"
 
-
-const std::string mat = "/project/projectdirs/m77/nstx_large_matrices/nstxu_180degree_antenna_phasing_write_matrix_order3/matrix.";
+// const std::string mat = "/project/projectdirs/m77/nstx_large_matrices/nstxu_180degree_antenna_phasing_write_matrix_order3/matrix.";
 
 using real_t = double;
 using scalar_t = std::complex<real_t>;
 
 
 int main(int argc, char* argv[]) {
+  std::string mat = std::string(argv[1]);
+
   int thread_level;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &thread_level);
   strumpack::MPIComm comm(MPI_COMM_WORLD);
   int rank = comm.rank(), P = comm.size();
 
+  double t_start = MPI_Wtime();
   std::int64_t m = 0;
   using Trip_t = strumpack::Triplet<scalar_t,std::int64_t>;
   std::vector<Trip_t> triplets;
@@ -48,9 +50,13 @@ int main(int argc, char* argv[]) {
   }
   std::int64_t nnz = comm.all_reduce(triplets.size(), MPI_SUM);
   m = comm.all_reduce(m, MPI_MAX);
-  if (!rank)
+  if (!rank) {
     std::cout << "Matrix has " << m << " rows and "
               << nnz << " nonzeros" << std::endl;
+    std::cout << "Reading matrix took "
+	      << MPI_Wtime() - t_start << " seconds" << std::endl;
+  }
+  t_start = MPI_Wtime();
 
   // assign ~m/P rows to each proc
   std::vector<std::int64_t> dist(P+1);
@@ -71,6 +77,8 @@ int main(int argc, char* argv[]) {
   for (auto& t : triplets) {
     auto dst = std::upper_bound(dist.begin(), dist.end(), t.r)
       - dist.begin() - 1;
+    assert(dst >= 0);
+    assert(dst < P);
     sbuf[dst].push_back(t);
   }
   triplets.clear();
@@ -87,7 +95,10 @@ int main(int argc, char* argv[]) {
     for (std::size_t p=0; p<P; p++)
       std::cout << lnnz << ", ";
     std::cout << "}" << std::endl;
+    std::cout << "Redistributing matrix took "
+	      << MPI_Wtime() - t_start << " seconds" << std::endl;
   }
+  t_start = MPI_Wtime();
   std::vector<std::int64_t> rptr(lrows+1), cind(lnnz);
   std::vector<scalar_t> val(lnnz);
   if (!rank) std::cout << "building local CSR" << std::endl;
@@ -107,6 +118,10 @@ int main(int argc, char* argv[]) {
   val.clear();
   rptr.clear();
   cind.clear();
+  if (!rank) {
+    std::cout << "Creating CSRMatrixMPI took "
+	      << MPI_Wtime() - t_start << " seconds" << std::endl;
+  }
 
   if (!rank) std::cout << "creating STRUMPACK solver" << std::endl;
   strumpack::StrumpackSparseSolverMPIDist<scalar_t,std::int64_t>sp(MPI_COMM_WORLD);
