@@ -21,9 +21,9 @@ using scalar_t = std::complex<real_t>;
 
 
 int main(int argc, char* argv[]) {
-  bool read_rhs = (argc >= 3);
+  bool read_rhs = true; //(argc >= 3);
   std::string mat = std::string(argv[1]);
-  
+
   int thread_level;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &thread_level);
   strumpack::MPIComm comm(MPI_COMM_WORLD);
@@ -58,8 +58,8 @@ int main(int argc, char* argv[]) {
   if (!rank)
     std::cout << "matrix has " << m << " rows and "
               << nnz << " nonzeros" << std::endl
-	      << "reading matrix took "
-	      << MPI_Wtime() - t_start << " seconds" << std::endl;
+              << "reading matrix took "
+              << MPI_Wtime() - t_start << " seconds" << std::endl;
 
   // assign ~m/P rows to each proc
   std::vector<std::int64_t> dist(P+1);
@@ -107,8 +107,8 @@ int main(int argc, char* argv[]) {
   comm.barrier();
   if (!rank)
     std::cout << "}" << std::endl
-	      << "redistributing matrix took "
-	      << MPI_Wtime() - t_start << " seconds" << std::endl;
+              << "redistributing matrix took "
+              << MPI_Wtime() - t_start << " seconds" << std::endl;
 
   t_start = MPI_Wtime();
   std::vector<std::int64_t> rptr(lrows+1), cind(lnnz);
@@ -136,8 +136,8 @@ int main(int argc, char* argv[]) {
   cind.clear();
   if (!rank)
     std::cout << "creating CSRMatrixMPI took "
-	      << MPI_Wtime() - t_start << " seconds" << std::endl
-	      << "creating STRUMPACK solver" << std::endl;
+              << MPI_Wtime() - t_start << " seconds" << std::endl
+              << "creating STRUMPACK solver" << std::endl;
   strumpack::StrumpackSparseSolverMPIDist<scalar_t,std::int64_t>sp(MPI_COMM_WORLD);
   sp.options().set_from_command_line(argc, argv);
   sp.options().set_matching(strumpack::MatchingJob::NONE);
@@ -155,32 +155,32 @@ int main(int argc, char* argv[]) {
       ss >> srow;
       std::int64_t row = std::stoi(srow);
       if (row >= dist[rank+1] && row < dist[rank]) {
-	bool hasir = std::find(l.begin(), l.end(), '+') != l.end();
-	bool hasj = std::find(l.begin(), l.end(), 'j') != l.end();
-	std::replace(l.begin(), l.end(), '(', ' ');
-	std::replace(l.begin(), l.end(), '+', ' ');
-	std::replace(l.begin(), l.end(), ')', ' ');
-	std::replace(l.begin(), l.end(), 'j', ' ');
-	std::string srow, sreal, simag;
-	std::stringstream ss(l);
-	ss >> srow;
-	if (hasir) {
-	  ss >> sreal;
-	  ss >> simag;
-	  b[row] = scalar_t(std::stod(sreal), std::stod(simag));
-	} else {
-	  if (hasj) {
-	    ss >> simag;
-	    b[row] = scalar_t(0., std::stod(simag));
-	  } else {
-	    ss >> sreal;
-	    b[row] = scalar_t(std::stod(sreal), 0.);
-	  }
-	}
+        bool hasir = std::find(l.begin(), l.end(), '+') != l.end();
+        bool hasj = std::find(l.begin(), l.end(), 'j') != l.end();
+        std::replace(l.begin(), l.end(), '(', ' ');
+        std::replace(l.begin(), l.end(), '+', ' ');
+        std::replace(l.begin(), l.end(), ')', ' ');
+        std::replace(l.begin(), l.end(), 'j', ' ');
+        std::string srow, sreal, simag;
+        std::stringstream ss(l);
+        ss >> srow;
+        if (hasir) {
+          ss >> sreal;
+          ss >> simag;
+          b[row] = scalar_t(std::stod(sreal), std::stod(simag));
+        } else {
+          if (hasj) {
+            ss >> simag;
+            b[row] = scalar_t(0., std::stod(simag));
+          } else {
+            ss >> sreal;
+            b[row] = scalar_t(std::stod(sreal), 0.);
+          }
+        }
       }
     }
     std::cout << "reading rhs took "
-	      << MPI_Wtime() - t_start << " seconds" << std::endl;
+              << MPI_Wtime() - t_start << " seconds" << std::endl;
   } else {
     // construct random exact solution
     x_exact.resize(lrows);
@@ -215,7 +215,7 @@ int main(int argc, char* argv[]) {
     auto nrm_x_exact = strumpack::norm2(x_exact, comm);
     if (!rank)
       std::cout << "# RELATIVE ERROR = " << (nrm_error/nrm_x_exact)
-		<< std::endl;
+                << std::endl;
   }
   return 0;
 }

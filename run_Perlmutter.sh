@@ -22,6 +22,7 @@ export MPICH_GPU_SUPPORT_ENABLED=1
 
 srun ./build/main \
      /pscratch/sd/p/pghysels/nstxu_180degree_antenna_phasing_write_matrix_order3/matrix. \
+     /pscratch/sd/p/pghysels/nstxu_180degree_antenna_phasing_write_matrix_order3/rhs_0.000000 \
      --sp_compression zfp_blr_hodlr \
      --sp_print_compressed_front_stats \
      > out/order3_Perlmutter_N32_zfp_blr_hodlr.log
