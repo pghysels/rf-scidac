@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # export STRUMPACK_DIR=/global/homes/p/pghysels/cori/STRUMPACK/install
-export STRUMPACK_DIR=/global/homes/p/pghysels/perlmutter/STRUMPACK/install
+export STRUMPACK_DIR=${HOME}/STRUMPACK/install
 
 rm -rf build
 rm -rf install
@@ -11,8 +11,9 @@ cd build
 
 cmake ../ \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_CXX_COMPILER=CC \
-      -DCMAKE_C_COMPILER=cc \
-      -DCMAKE_Fortran_COMPILER=ftn
+      -DCMAKE_CXX_COMPILER=mpiCC \
+      -DCMAKE_C_COMPILER=mpicc \
+      -DCMAKE_Fortran_COMPILER=mpif90 \
+      -DCMAKE_CUDA_COMPILER=nvcc
 
 make

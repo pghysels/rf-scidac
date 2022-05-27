@@ -154,7 +154,8 @@ int main(int argc, char* argv[]) {
       std::stringstream ss(l);
       ss >> srow;
       std::int64_t row = std::stoi(srow);
-      if (row >= dist[rank+1] && row < dist[rank]) {
+      if (row >= dist[rank] && row < dist[rank+1]) {
+        row -= dist[rank];
         bool hasir = std::find(l.begin(), l.end(), '+') != l.end();
         bool hasj = std::find(l.begin(), l.end(), 'j') != l.end();
         std::replace(l.begin(), l.end(), '(', ' ');
@@ -179,8 +180,9 @@ int main(int argc, char* argv[]) {
         }
       }
     }
-    std::cout << "reading rhs took "
-              << MPI_Wtime() - t_start << " seconds" << std::endl;
+    if (!rank)
+      std::cout << "reading rhs took "
+                << MPI_Wtime() - t_start << " seconds" << std::endl;
   } else {
     // construct random exact solution
     x_exact.resize(lrows);
