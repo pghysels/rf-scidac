@@ -25,9 +25,12 @@ int main(int argc, char* argv[]) {
   std::string mat = std::string(argv[1]);
 
   int thread_level;
-  MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &thread_level);
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &thread_level);
   strumpack::MPIComm comm(MPI_COMM_WORLD);
   int rank = comm.rank(), P = comm.size();
+  if (thread_level != MPI_THREAD_MULTIPLE && rank == 0)
+    std::cout << "MPI implementation does not support MPI_THREAD_MULTIPLE"
+              << std::endl;
 
   double t_start = MPI_Wtime();
   std::int64_t m = 0;
