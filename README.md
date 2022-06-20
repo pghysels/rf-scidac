@@ -2,10 +2,9 @@ Solve large scale sparse linear systems from an rf-scidac applications
 using STRUMPACK.
 
 
-## Build instructions for SUMMIT
+# Build instructions for SUMMIT
 
-
-# Modules:
+## Modules:
 ```
 module unload cmake
 module swap xl gcc/11.2.0
@@ -18,7 +17,7 @@ module load cmake
 module unload darshan-runtime
 ```
 
-# Install metis
+## Install metis
 ```
 wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz
 tar -xvzf metis-5.1.0.tar.gz
@@ -30,7 +29,7 @@ make install
 export METIS_DIR=`pwd`/install    # this will help STRUMPACK find metis
 ```
 
-# Build SLATE for GPU acceleration of ScaLAPACK functionality
+## Build SLATE for GPU acceleration of ScaLAPACK functionality
 
 ```
 git clone --recursive https://bitbucket.org/icl/slate
@@ -61,7 +60,7 @@ make install
 ```
 
 
-# Build STRUMPACK
+## Build STRUMPACK
 ```
 git clone git@github.com:pghysels/STRUMPACK.git
 cd STRUMPACK
@@ -89,8 +88,11 @@ make -j8
 make install
 ```
 
-Finally run the driver using
+Finally run the driver using (adjust STRUMPACK path in `build.sh`)
 ```
 bash build.sh
 ```
+
+See `run_summit.sh` for a batch script.
+
 
